@@ -38,7 +38,7 @@ class Browser:
                                        url, location_type, location_id)
         return [float(p) for p in pos]
 
-    async def get_phone_numbers_xml(self, url, adv_html) -> List[str, str]:
+    async def get_phone_numbers_xml(self, url, adv_html) -> List[str]:
         def get_input_value(input_id):
             input_html = adv_html.xpath(f'//input[@id="{input_id}"]')
             if input_html:
