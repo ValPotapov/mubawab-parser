@@ -1,6 +1,7 @@
+import os
+import json
 import asyncio
 from asyncio.coroutines import iscoroutine
-import json
 
 from tqdm import tqdm
 
@@ -109,6 +110,10 @@ async def main():
                         advs.pop(i)
             elif iscoroutine(result):
                 coros.append(result)
+
+
+        if not os.path.exists('data'):
+            os.mkdir('data')
 
         write_advs_to_json(advs, 'data/advs.json')
         write_advs_to_json(new_advs, 'data/new_advs.json')
