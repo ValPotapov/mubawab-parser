@@ -45,10 +45,6 @@ class Parser:
                 return None
             else:
                 print(r.status)
-                print(r.status)
-                print(r.status)
-                print(r.status)
-                print(r.status)
                 open(f'debug/error {r.status}', 'w').write(url)
                 return None
 
