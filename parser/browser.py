@@ -1,9 +1,10 @@
+import time
+import urllib.parse
+from typing import List
+
 from pyppeteer import launch
 from pyppeteer.browser import Browser as _Browser
 from pyppeteer.page import Page
-import time
-import urllib.parse
-from lxml import etree
 
 from . import js
 
@@ -37,7 +38,7 @@ class Browser:
                                        url, location_type, location_id)
         return [float(p) for p in pos]
 
-    async def get_phone_numbers_xml(self, url, adv_html) -> [str, str]:
+    async def get_phone_numbers_xml(self, url, adv_html) -> List[str, str]:
         def get_input_value(input_id):
             input_html = adv_html.xpath(f'//input[@id="{input_id}"]')
             if input_html:
