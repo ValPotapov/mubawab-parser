@@ -45,11 +45,11 @@ URLS = {
 }
 
 NEW_HOMES_URLS = {
-    AdvertisementType.APARTMENT: 'https://www.mubawab.ma/en/listing-promotion:scat:apartments-for-sale',
-    AdvertisementType.COMMERCIAL: 'https://www.mubawab.ma/en/listing-promotion:scat:commercial-property-for-sale',
-    AdvertisementType.HOUSE: 'https://www.mubawab.ma/en/listing-promotion:scat:houses-for-sale',
-    AdvertisementType.LAND: 'https://www.mubawab.ma/en/listing-promotion:scat:land-for-sale',
-    AdvertisementType.LUXURY: 'https://www.mubawab.ma/en/listing-promotion:scat:villas-and-luxury-homes-for-sale',
+    #AdvertisementType.APARTMENT: 'https://www.mubawab.ma/en/listing-promotion:scat:apartments-for-sale',
+    #AdvertisementType.COMMERCIAL: 'https://www.mubawab.ma/en/listing-promotion:scat:commercial-property-for-sale',
+    #AdvertisementType.HOUSE: 'https://www.mubawab.ma/en/listing-promotion:scat:houses-for-sale',
+    #AdvertisementType.LAND: 'https://www.mubawab.ma/en/listing-promotion:scat:land-for-sale',
+    #AdvertisementType.LUXURY: 'https://www.mubawab.ma/en/listing-promotion:scat:villas-and-luxury-homes-for-sale',
     AdvertisementType.OFFICE_SPACE: 'https://www.mubawab.ma/en/listing-promotion:scat:offices-for-sale'
 }
 

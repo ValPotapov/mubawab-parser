@@ -46,8 +46,11 @@ class Browser:
 
         # Пример переменной 'function_call'
         # return showPhoneAdPage('https://www.mubawab.ma/en/ajax/desktop/web/public/show-ad-phone', 'jIb46hAZhJ2Qm4kXUASlGE8XnBGofpRrVCrQ7qVPVZ0=', 'adPage');
-        phone_number_box_eh = adv_html.xpath('//div[@class="hide-phone-number-box"]')[0]
+        phone_number_box_eh = adv_html.xpath('//div[contains(@class, "hide-phone-number-box")]')[0]
         function_call = phone_number_box_eh.get('onclick')
+        if function_call is None:
+            return
+        
         _, request_url, _, encrypted_phone, _, zone_created, *_ = function_call.split("'")
         phone_numbers_html = await self.page.evaluate(
             js.get_phone_number_ajax,
