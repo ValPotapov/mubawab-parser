@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import logging
 from asyncio.coroutines import iscoroutine
 
 from tqdm import tqdm
@@ -67,6 +68,7 @@ async def main():
         semaphore = asyncio.Semaphore(max_threads)
         coros = []
         pbar = tqdm().__enter__()
+
         # Получаем ссылки на все объявления из разделов "For Rent" и "For Sale" и добавлем
         # в очередь обрбаотку каждой ссылки.
         for property_type, urls in URLS.items():
@@ -111,7 +113,6 @@ async def main():
             elif iscoroutine(result):
                 coros.append(result)
 
-
         if not os.path.exists('data'):
             os.mkdir('data')
 
@@ -120,4 +121,5 @@ async def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='error.log', level=logging.ERROR)
     asyncio.run(main())

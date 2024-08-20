@@ -1,7 +1,7 @@
 import asyncio
 import json
 import re
-import traceback
+import logging
 from io import BytesIO
 
 import aiohttp
@@ -19,6 +19,8 @@ class Parser:
     def __init__(self, browser: Browser):
         self.parser = etree.HTMLParser(encoding='utf-8')
         self.browser = browser
+
+        self.logger = logging.getLogger(__name__)
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -44,15 +46,15 @@ class Parser:
             elif r.status == 404:
                 return None
             else:
-                print(r.status)
+                self.logger.error(f"{url} return status code {r.status}")
                 open(f'debug/error {r.status}', 'w').write(url)
                 return None
 
     async def get_pages_count(self, url=None, html=None) -> int:
         if not html:
             html = await self.get_etree(url)
-        nav_info_html = html.xpath('//p[@class="fSize11 centered"]')
 
+        nav_info_html = html.xpath('//p[@class="fSize11 centered"]')
         if nav_info_html:
             nav_info = get_html_content(nav_info_html[0])
             max_pages = nav_info.rsplit('-')[-1].split()[0]
@@ -157,18 +159,27 @@ class Parser:
             # Если вернулась строка, то значит, что объявление убрали.
             if type(adv_html) is str:
                 return url
+            
+            if adv_html is None:
+                self.logger.error(f"Nothing to parse (url: {url})")
 
             # Заголовок объявления.
-            adv.title = get_html_content(adv_html.xpath('//h1')[0])
+            try:
+                adv.title = get_html_content(adv_html.xpath('//h1')[0])
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing title)")
 
             # Описание объявления.
-            description_html = adv_html.xpath('//div[contains(@class, "blockProp")]/p')[0]
-            adv.description = get_html_content(description_html, '\n\n')
+            try:
+                description_html = adv_html.xpath('//div[contains(@class, "blockProp")]/p')[0]
+                adv.description = get_html_content(description_html, '\n\n')
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing description)")
 
             # Стоимость недвижимости.
-            price_string = get_html_content(adv_html.xpath('//div[@class="mainInfoProp"][1]//h3[@class="orangeTit"][1]')[0])
-            if 'Price on request' not in price_string:
-                try:
+            try:
+                price_string = get_html_content(adv_html.xpath('//div[@class="mainInfoProp"][1]//h3[@class="orangeTit"][1]')[0])
+                if 'Price on request' not in price_string:
                     price, currency = price_string.split(maxsplit=1)
                     if 'per' in price_string:
                         print(price_string, url)
@@ -181,62 +192,78 @@ class Parser:
                         else:
                             adv.price = price
                     adv.currency = currency
-                except Exception as e:
-                    print(e)
-                    input()
-                    print('Price error', price_string, url)
-            else:
-                adv.request_price = True
+                else:
+                    adv.request_price = True
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing price)")
 
             # Район и город.
-            city_html = adv_html.xpath('//div[contains(@class, "adBreadBlock")]/div/div/a[2]')[0]
-            region = get_html_content(city_html).split(' ')[1]  # Отрезаем Property, оставляя название города
-            adv.district = None
-            adv.region = region
+            try:
+                city_html = adv_html.xpath('//div[contains(@class, "adBreadBlock")]/div/div/a[2]')[0]
+                region = get_html_content(city_html).split(' ')[1]  # Отрезаем Property, оставляя название города
+                adv.district = None
+                adv.region = region
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing city)")
 
             # Берём информацию из тегов.
-            tags_html = adv_html.xpath('//div[contains(@class, "adDetails")]')
-            for span in tags_html:
-                tag = get_html_content(span)
-                tag = tag.lower()
-                adv.tags.append(tag)
-                if tag.endswith('m²'):
-                    adv.area = int(tag.split()[0])
-                elif ' room' in tag:
-                    adv.rooms_number = int(tag.split()[0])
-                elif tag.endswith('stage'):
-                    floor = tag.split()[0]
-                    floor = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", floor)
-                    adv.floor = int(floor)
-                elif tag.endswith('rooms'):
-                    adv.rooms_number = int(tag.split()[0])
-                elif 'years' in tag:
-                    # over 100 years old
-                    if 'over' in tag:
-                        adv.area = int(tag.split()[1])
-                    # 5-10 years old
-                    elif '-' in tag:
-                        years_range = tag.split()[0]
-                        adv.age = int(years_range.split('-')[-1])
-                    else:
-                        adv.age = int(tag.split()[0])
+            try:
+                tags_html = adv_html.xpath('//div[contains(@class, "adDetails")]')
+                for span in tags_html:
+                    tag = get_html_content(span)
+                    tag = tag.lower()
+                    adv.tags.append(tag)
+                    if tag.endswith('m²'):
+                        adv.area = int(tag.split()[0])
+                    elif ' room' in tag:
+                        adv.rooms_number = int(tag.split()[0])
+                    elif tag.endswith('stage'):
+                        floor = tag.split()[0]
+                        floor = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", floor)
+                        adv.floor = int(floor)
+                    elif tag.endswith('rooms'):
+                        adv.rooms_number = int(tag.split()[0])
+                    elif 'years' in tag:
+                        # over 100 years old
+                        if 'over' in tag:
+                            adv.area = int(tag.split()[1])
+                        # 5-10 years old
+                        elif '-' in tag:
+                            years_range = tag.split()[0]
+                            adv.age = int(years_range.split('-')[-1])
+                        else:
+                            adv.age = int(tag.split()[0])
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing tags)")
 
             # Теги для дополнительной рекламы
-            ad_features_html = adv_html.xpath('//div[contains(@class,"adFeatures")]/div/span')
-            for li in ad_features_html:
-                ad_feature = get_html_content(li)
-                if ad_feature.lower() == 'elevator':
-                    adv.elevator = True
-                adv.ad_features.append(ad_feature)
+            try:
+                ad_features_html = adv_html.xpath('//div[contains(@class,"adFeatures")]/div/span')
+                for li in ad_features_html:
+                    ad_feature = get_html_content(li)
+                    if ad_feature.lower() == 'elevator':
+                        adv.elevator = True
+                    adv.ad_features.append(ad_feature)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing ad features)")
 
             # Координаты недвижимости
-            adv.location = await self.get_adv_location(adv_html)
+            try:
+                adv.location = await self.get_adv_location(adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing coords)")
 
             # Фото объявления.
-            adv.photos_urls = self.get_adv_photos(adv_html)
+            try:
+                adv.photos_urls = self.get_adv_photos(adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing photos urls)")
 
             # Получаем список номеров через браузер (нужно корректное выполнение JS).
-            adv.phone_numbers = await self.get_adv_phone_numbers(url, adv_html)
+            try:
+                adv.phone_numbers = await self.get_adv_phone_numbers(url, adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing phone numbers)")
 
             pbar.update(1)
             return adv
@@ -253,44 +280,68 @@ class Parser:
             adv.new = True
 
             # Заголовок.
-            title_h1 = adv_html.xpath('//h1[@class="SpremiumH2"][1]')[0]
-            adv.title = get_html_content(title_h1)
+            try:
+                title_h1 = adv_html.xpath('//h1[@class="SpremiumH2"][1]')[0]
+                adv.title = get_html_content(title_h1)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing title) [new adv]")
 
             # Описание.
-            description_p = adv_html.xpath('//p[@class="changeDescrip"][1]')[0]
-            adv.description = get_html_content(description_p, '\n\n')
+            try:
+                description_p = adv_html.xpath('//p[@class="changeDescrip"][1]')[0]
+                adv.description = get_html_content(description_p, '\n\n')
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing description) [new adv]")
 
             # Цена.
-            price_h2 = adv_html.xpath('//h2[@class="SpremiumH2 orangeText"][1]')[0]
-            price_string = get_html_content(price_h2).lower().replace(',', '')
-            price_string_split = price_string.split()
-            if 'from' in price_string:
-                adv.from_price = float(price_string_split[1])
-                adv.currency = price_string_split[-1]
-            elif 'request' in price_string:
-                adv.request_price = True
-            else:
-                adv.price = float(price_string_split[0])
+            try:
+                price_h2 = adv_html.xpath('//h2[@class="SpremiumH2 orangeText"][1]')[0]
+                price_string = get_html_content(price_h2).lower().replace(',', '')
+                price_string_split = price_string.split()
+                if 'from' in price_string:
+                    adv.from_price = float(price_string_split[1])
+                    adv.currency = price_string_split[-1]
+                elif 'request' in price_string:
+                    adv.request_price = True
+                else:
+                    adv.price = float(price_string_split[0])
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing price) [new adv]")
 
             # Теги.
-            tags_p = adv_html.xpath('//p[@class="immoBadge"]')
-            for tag_p in tags_p:
-                adv.tags.append(get_html_content(tag_p))
+            try:
+                tags_p = adv_html.xpath('//p[@class="immoBadge"]')
+                for tag_p in tags_p:
+                    adv.tags.append(get_html_content(tag_p))
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing tags) [new adv]")
 
             # Локация.
-            location_p = adv_html.xpath('//div[contains(@class, "adBreadBlock")]/div/div/a[3]')[0]
-            city = get_html_content(location_p).split()[-1]  # Отрезаем New homes
-            adv.district = None
-            adv.region = city
+            try:
+                location_p = adv_html.xpath('//div[contains(@class, "adBreadBlock")]/div/div/a[3]')[0]
+                city = get_html_content(location_p).split()[-1]  # Отрезаем New homes
+                adv.district = None
+                adv.region = city
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing location) [new adv]")
 
             # Телефон.
-            adv.phone_numbers = await self.get_adv_phone_numbers(url, adv_html)
+            try:
+                adv.phone_numbers = await self.get_adv_phone_numbers(url, adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing phone numbers) [new adv]")
 
             # Координаты.
-            adv.location = await self.get_adv_location(adv_html)
+            try:
+                adv.location = await self.get_adv_location(adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing location) [new adv]")
 
             # Фото.
-            adv.photos_urls = self.get_adv_photos(adv_html)
+            try:
+                adv.photos_urls = self.get_adv_photos(adv_html)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing photos urls) [new adv]")
 
             pbar.update(1)
             return adv
