@@ -162,6 +162,7 @@ class Parser:
             
             if adv_html is None:
                 self.logger.error(f"Nothing to parse (url: {url})")
+                return
 
             # Заголовок объявления.
             try:
@@ -208,7 +209,7 @@ class Parser:
 
             # Берём информацию из тегов.
             try:
-                tags_html = adv_html.xpath('//div[contains(@class, "adDetails")]')
+                tags_html = adv_html.xpath('//div[contains(@class, "adDetails")]/div/span')
                 for span in tags_html:
                     tag = get_html_content(span)
                     tag = tag.lower()
@@ -217,16 +218,26 @@ class Parser:
                         adv.area = int(tag.split()[0])
                     elif ' room' in tag:
                         adv.rooms_number = int(tag.split()[0])
-                    elif tag.endswith('stage'):
-                        floor = tag.split()[0]
-                        floor = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", floor)
-                        adv.floor = int(floor)
                     elif tag.endswith('rooms'):
                         adv.rooms_number = int(tag.split()[0])
-                    elif 'years' in tag:
+                    elif tag.endswith('th'):
+                        adv.floor = int(tag.split()[0])
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing tags)")
+
+            # Берем информацию из характеристик
+            try:
+                tags_html = adv_html.xpath('//div[contains(@class, "adFeatures")]/div/div[2]/p[2]')
+                for span in tags_html:
+                    tag = get_html_content(span)
+                    tag = tag.lower()
+                    if 'year' in tag:
+                        # less than 1 year
+                        if 'less than' in tag:
+                            adv.age = int(tag.split()[-2])
                         # over 100 years old
-                        if 'over' in tag:
-                            adv.area = int(tag.split()[1])
+                        elif 'over' in tag:
+                            adv.age = int(tag.split()[1])
                         # 5-10 years old
                         elif '-' in tag:
                             years_range = tag.split()[0]
@@ -234,7 +245,7 @@ class Parser:
                         else:
                             adv.age = int(tag.split()[0])
             except Exception as e:
-                self.logger.error(f"{type(e).__name__}: {e} (while parsing tags)")
+                self.logger.error(f"{type(e).__name__}: {e} (while parsing features)")
 
             # Теги для дополнительной рекламы
             try:
@@ -247,6 +258,9 @@ class Parser:
             except Exception as e:
                 self.logger.error(f"{type(e).__name__}: {e} (while parsing ad features)")
 
+            if not adv.elevator:
+                adv.elevator = False
+                
             # Координаты недвижимости
             try:
                 adv.location = await self.get_adv_location(adv_html)
