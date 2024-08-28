@@ -61,3 +61,5 @@ class Advertisement:
         self.photos_urls: list[str] = kwargs.get('photos_urls', [])
         # Возраст постройки.
         self.age: int = kwargs.get('age')
+        # Актуально ли объявление
+        self.relevant: bool = kwargs.get('relevant')

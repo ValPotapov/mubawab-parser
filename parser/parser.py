@@ -52,7 +52,11 @@ class Parser:
 
     async def get_pages_count(self, url=None, html=None) -> int:
         if not html:
-            html = await self.get_etree(url)
+            try:
+                html = await self.get_etree(url)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e}")
+                return 0
 
         nav_info_html = html.xpath('//p[@class="fSize11 centered"]')
         if nav_info_html:
@@ -70,7 +74,12 @@ class Parser:
                                       pbar) -> list[Advertisement]:
         url = url + ':p:' + str(page_num)
         async with sem:  # semaphore limits num of simultaneous downloads
-            page_html = await self.get_etree(url)
+            try:
+                page_html = await self.get_etree(url)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e}")
+                return []
+            
             pbar.update(1)
             if not page_html:
                 return []
@@ -155,14 +164,23 @@ class Parser:
         async with sem:
             url = adv.url
 
-            adv_html = await self.get_etree(url)
+            try:
+                adv_html = await self.get_etree(url)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e}")
+                return
+            
             # Если вернулась строка, то значит, что объявление убрали.
             if type(adv_html) is str:
-                return url
+                adv.relevant = False
+                return adv
             
             if adv_html is None:
                 self.logger.error(f"Nothing to parse (url: {url})")
-                return
+                adv.relevant = False
+                return adv
+            
+            adv.relevant = True
 
             # Заголовок объявления.
             try:
@@ -285,12 +303,19 @@ class Parser:
     async def parse_new_adv(self, adv: Advertisement, sem, pbar):
         async with sem:
             url = adv.url
-
-            adv_html = await self.get_etree(url)
+            
+            try:
+                adv_html = await self.get_etree(url)
+            except Exception as e:
+                self.logger.error(f"{type(e).__name__}: {e}")
+                return
+            
             # Если вернулась строка, то значит, что объявление убрали.
             if type(adv_html) is str:
+                adv.relevant = False
                 return url
-
+            
+            adv.relevant = True
             adv.new = True
 
             # Заголовок.
