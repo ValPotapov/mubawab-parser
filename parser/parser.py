@@ -89,6 +89,7 @@ class Parser:
                     publish_date_html = adv_html.xpath('//span[@class="listingDetails iconPadR"]')[0]
                     publish_date_string = get_html_content(publish_date_html)
                     advs.append(Advertisement(
+                        int(re.findall(r'/\d+/', adv_html.get('linkref'))[0].strip('/')),
                         property_type,
                         publish_date=publish_date_string,
                         url=adv_html.get('linkref')
@@ -98,6 +99,7 @@ class Parser:
                 advs = []
                 for listing_li in listings_li:
                     advs.append(Advertisement(
+                        int(re.findall(r'/\d+/', listing_li.get('linkref'))[0].strip('/')),
                         property_type,
                         url=listing_li.get('linkref')
                     ))
@@ -199,7 +201,7 @@ class Parser:
             try:
                 price_string = get_html_content(adv_html.xpath('//div[@class="mainInfoProp"][1]//h3[@class="orangeTit"][1]')[0])
                 if 'Price on request' not in price_string:
-                    price, currency = price_string.split(maxsplit=1)
+                    price, currency = price_string.strip().split(maxsplit=1)
                     if 'per' in price_string:
                         print(price_string, url)
                     if 'per day' in price_string:

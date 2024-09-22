@@ -14,7 +14,9 @@ class AdvertisementType(IntEnum):
 
 
 class Advertisement:
-    def __init__(self, property_type: AdvertisementType, **kwargs):
+    def __init__(self, index: int, property_type: AdvertisementType, **kwargs):
+        # id на сайте
+        self.index = index
         # Тип недвижимости.
         self.property_type = property_type
         # Объявление из раздела новостроек.

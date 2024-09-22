@@ -29,13 +29,13 @@ for entry in data:
 
     cursor.execute("""
         INSERT INTO advertisements (
-            property_type, is_new, url, title, description, area, floor, rooms_number, 
+            index, property_type, is_new, url, title, description, area, floor, rooms_number, 
             price, price_per_day, from_price, rent_price, request_price, currency, district, 
             region, publish_date, phone_numbers, tags, ad_features, elevator, 
             location, photos_urls, age, relevant
         ) 
         VALUES (
-            %(property_type)s, %(new)s, %(url)s, %(title)s, %(description)s, %(area)s, %(floor)s, %(rooms_number)s, 
+            %(index)s, %(property_type)s, %(new)s, %(url)s, %(title)s, %(description)s, %(area)s, %(floor)s, %(rooms_number)s, 
             %(price)s, %(price_per_day)s, %(from_price)s, %(rent_price)s, %(request_price)s, %(currency)s, %(district)s, 
             %(region)s, %(publish_date)s, %(phone_numbers)s, %(tags)s, %(ad_features)s, %(elevator)s, 
             %(location)s, %(photos_urls)s, %(age)s, %(relevant)s
